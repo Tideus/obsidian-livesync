@@ -20,6 +20,65 @@ jobs:
           ref: fix/android-fast-fetch-normal-feed
           path: commonlib
 
+      - name: Add Fast Fetch recovery diagnostics
+        run: |
+          python <<'PY'
+          from pathlib import Path
+
+          p = Path("commonlib/src/serviceModules/Rebuilder.ts")
+          s = p.read_text()
+
+          replacements = [
+              (
+                  "    async fetchLocal(makeLocalChunkBeforeSync?: boolean, preventMakeLocalFilesBeforeSync?: boolean, autoResume = true) {\n        await this.setting.suspendExtraSync();",
+                  "    async fetchLocal(makeLocalChunkBeforeSync?: boolean, preventMakeLocalFilesBeforeSync?: boolean, autoResume = true) {\n        this._log(\"[FastFetchDebug] fetchLocal entered\", LOG_LEVEL_NOTICE);\n        await this.setting.suspendExtraSync();",
+              ),
+              (
+                  "    private async performFetchLocal(\n        makeLocalChunkBeforeSync?: boolean,\n        preventMakeLocalFilesBeforeSync?: boolean,\n        autoResume = true\n    ) {\n        this.appLifecycle.resetIsReady();",
+                  "    private async performFetchLocal(\n        makeLocalChunkBeforeSync?: boolean,\n        preventMakeLocalFilesBeforeSync?: boolean,\n        autoResume = true\n    ) {\n        this._log(\"[FastFetchDebug] performFetchLocal entered\", LOG_LEVEL_NOTICE);\n        this.appLifecycle.resetIsReady();",
+              ),
+              (
+                  "        await this.resetLocalDatabase();\n        this.clearFastFetchCheckpoint();",
+                  "        this._log(\"[FastFetchDebug] Standard Fetch: about to reset local database\", LOG_LEVEL_NOTICE);\n        await this.resetLocalDatabase();\n        this._log(\"[FastFetchDebug] Standard Fetch: resetLocalDatabase returned\", LOG_LEVEL_NOTICE);\n        this.clearFastFetchCheckpoint();",
+              ),
+              (
+                  "    async fetchLocalDBFast(autoResume: boolean) {\n        await this.setting.suspendExtraSync();",
+                  "    async fetchLocalDBFast(autoResume: boolean) {\n        this._log(\"[FastFetchDebug] fetchLocalDBFast entered\", LOG_LEVEL_NOTICE);\n        await this.setting.suspendExtraSync();",
+              ),
+              (
+                  "    private async performFetchLocalDBFast(\n        settings: ReturnType<SettingService[\"currentSettings\"]>,\n        autoResume: boolean\n    ) {\n        this.appLifecycle.resetIsReady();",
+                  "    private async performFetchLocalDBFast(\n        settings: ReturnType<SettingService[\"currentSettings\"]>,\n        autoResume: boolean\n    ) {\n        this._log(\"[FastFetchDebug] performFetchLocalDBFast entered\", LOG_LEVEL_NOTICE);\n        this.appLifecycle.resetIsReady();",
+              ),
+              (
+                  "        } else {\n            await this.resetLocalDatabase();\n            await delay(1000);\n        }\n\n        let localDB = this.database.localDatabase.localDatabase;",
+                  "        } else {\n            this._log(\"[FastFetchDebug] Fast Fetch: about to reset local database\", LOG_LEVEL_NOTICE);\n            await this.resetLocalDatabase();\n            this._log(\"[FastFetchDebug] Fast Fetch: resetLocalDatabase returned\", LOG_LEVEL_NOTICE);\n            await delay(1000);\n            this._log(\"[FastFetchDebug] Fast Fetch: post-reset delay finished\", LOG_LEVEL_NOTICE);\n        }\n\n        let localDB = this.database.localDatabase.localDatabase;\n        this._log(\"[FastFetchDebug] Fast Fetch: local DB handle acquired\", LOG_LEVEL_NOTICE);",
+              ),
+              (
+                  "        const securitySeed = await this.replicator.createRemoteResource(REMOTE_RESOURCE_KINDS.SECURITY_SEED, settings);",
+                  "        this._log(\"[FastFetchDebug] Fast Fetch: requesting security seed\", LOG_LEVEL_NOTICE);\n        const securitySeed = await this.replicator.createRemoteResource(REMOTE_RESOURCE_KINDS.SECURITY_SEED, settings);\n        this._log(\"[FastFetchDebug] Fast Fetch: security seed request returned\", LOG_LEVEL_NOTICE);",
+              ),
+              (
+                  "                    await fetchChangesForInitialSync(\n                        localDB,",
+                  "                    this._log(\"[FastFetchDebug] Fast Fetch: about to call fetchChangesForInitialSync\", LOG_LEVEL_NOTICE);\n                    await fetchChangesForInitialSync(\n                        localDB,",
+              ),
+              (
+                  "    async resetLocalDatabase() {\n        const suffix = this.API.getAppID() || \"\";",
+                  "    async resetLocalDatabase() {\n        this._log(\"[FastFetchDebug] resetLocalDatabase entered\", LOG_LEVEL_NOTICE);\n        const suffix = this.API.getAppID() || \"\";",
+              ),
+              (
+                  "        this.events.emitEvent(EVENT_DATABASE_REBUILT);\n    }",
+                  "        this._log(\"[FastFetchDebug] resetLocalDatabase: database reset completed; emitting EVENT_DATABASE_REBUILT\", LOG_LEVEL_NOTICE);\n        this.events.emitEvent(EVENT_DATABASE_REBUILT);\n        this._log(\"[FastFetchDebug] resetLocalDatabase: EVENT_DATABASE_REBUILT returned\", LOG_LEVEL_NOTICE);\n    }",
+              ),
+          ]
+
+          for old, new in replacements:
+              if old not in s:
+                  raise SystemExit(f"diagnostic patch anchor not found:\n{old[:160]}")
+              s = s.replace(old, new, 1)
+
+          p.write_text(s)
+          PY
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -49,6 +108,8 @@ jobs:
         run: |
           test -f main.js
           test -f manifest.json
+          grep -Fq '[FastFetchDebug] fetchLocalDBFast entered' main.js
+          grep -Fq '[FastFetchDebug] resetLocalDatabase entered' main.js
           if [ -f styles.css ]; then echo "styles.css present"; else echo "styles.css not present; continuing"; fi
 
       - name: Assemble test plugin
@@ -57,14 +118,15 @@ jobs:
           cp main.js manifest.json artifact/
           if [ -f styles.css ]; then cp styles.css artifact/; fi
           printf '%s\n' \
-            'Experimental Android Fast Fetch build.' \
+            'Experimental Android Fast Fetch diagnostic build.' \
             'Commonlib branch: Tideus/livesync-commonlib@fix/android-fast-fetch-normal-feed' \
             'Fast Fetch uses finite CouchDB feed=normal pages instead of ReadableStream feed=continuous.' \
+            'This build also logs [FastFetchDebug] checkpoints around the recovery/reset flow.' \
             > artifact/TEST-BUILD.txt
 
       - name: Upload plugin artifact
         uses: actions/upload-artifact@v4
         with:
-          name: obsidian-livesync-android-fast-fetch-test
+          name: obsidian-livesync-android-fast-fetch-diagnostic
           path: artifact/
           if-no-files-found: error
