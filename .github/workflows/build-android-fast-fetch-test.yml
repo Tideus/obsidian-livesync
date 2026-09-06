@@ -79,6 +79,45 @@ jobs:
           p.write_text(s)
           PY
 
+      - name: Add StreamingFetch transport diagnostics
+        run: |
+          python <<'PY'
+          from pathlib import Path
+
+          p = Path("commonlib/src/pouchdb/StreamingFetch.ts")
+          s = p.read_text()
+
+          replacements = [
+              (
+                  "): Promise<void> {\n    let totalFetched = 0;\n    let totalValidFetched = 0;\n    let totalBytes = 0;",
+                  "): Promise<void> {\n    Logger(\"[FastFetchDebug] fetchChangesForInitialSync entered\");\n    let totalFetched = 0;\n    let totalValidFetched = 0;\n    let totalBytes = 0;",
+              ),
+              (
+                  "        const response = await fetchResponse(\n            statusURL.toString(),\n            { method: \"GET\", headers: fetchHeaders },\n            \"read changes status\"\n        );\n        return parseJSONResponse<DatabaseSyncStatus>(\n            await readResponseText(response, \"read changes status\"),",
+                  "        Logger(`[FastFetchDebug] status probe begin since=${statusSince}`);\n        Logger(`[FastFetchDebug] status probe URL: ${statusURL.toString()}`);\n        const response = await fetchResponse(\n            statusURL.toString(),\n            { method: \"GET\", headers: fetchHeaders },\n            \"read changes status\"\n        );\n        Logger(`[FastFetchDebug] status probe response status: ${response.status}`);\n        const responseText = await readResponseText(response, \"read changes status\");\n        Logger(`[FastFetchDebug] status probe body length: ${responseText.length}`);\n        return parseJSONResponse<DatabaseSyncStatus>(\n            responseText,",
+              ),
+              (
+                  "    const targetStatus = await fetchStatus(\"now\");\n    const progressTargetSeq = targetStatus.last_seq;",
+                  "    Logger(\"[FastFetchDebug] target probe starting\");\n    const targetStatus = await fetchStatus(\"now\");\n    Logger(\"[FastFetchDebug] target probe completed\");\n    const progressTargetSeq = targetStatus.last_seq;",
+              ),
+              (
+                  "        const status = await fetchStatus(pageSince);\n        if (!Array.isArray(status.results)) {",
+                  "        Logger(`[FastFetchDebug] available-changes probe starting since=${pageSince}`);\n        const status = await fetchStatus(pageSince);\n        Logger(`[FastFetchDebug] available-changes probe returned pending=${status.pending} results=${Array.isArray(status.results) ? status.results.length : -1}`);\n        if (!Array.isArray(status.results)) {",
+              ),
+              (
+                  "        const response = await fetchResponse(\n            changesURL.toString(),\n            { method: \"GET\", headers: fetchHeaders },\n            \"fetch a bounded normal changes page\"\n        );\n        const raw = await readResponseText(response, \"read a bounded normal changes page\");",
+                  "        Logger(`[FastFetchDebug] page fetch starting since=${pageSince} limit=${pageLimit}`);\n        Logger(`[FastFetchDebug] page fetch URL: ${changesURL.toString()}`);\n        const response = await fetchResponse(\n            changesURL.toString(),\n            { method: \"GET\", headers: fetchHeaders },\n            \"fetch a bounded normal changes page\"\n        );\n        Logger(`[FastFetchDebug] page fetch response status: ${response.status}`);\n        const raw = await readResponseText(response, \"read a bounded normal changes page\");\n        Logger(`[FastFetchDebug] page fetch body length: ${raw.length}`);",
+              ),
+          ]
+
+          for old, new in replacements:
+              if old not in s:
+                  raise SystemExit(f"StreamingFetch diagnostic anchor not found:\n{old[:180]}")
+              s = s.replace(old, new, 1)
+
+          p.write_text(s)
+          PY
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -111,6 +150,10 @@ jobs:
           grep -Fq '[FastFetchDebug] fetchLocalDBFast entered' main.js
           grep -Fq '[FastFetchDebug] performFetchLocalDBFast entered' main.js
           grep -Fq '[FastFetchDebug] Fast Fetch: about to call fetchChangesForInitialSync' main.js
+          grep -Fq '[FastFetchDebug] fetchChangesForInitialSync entered' main.js
+          grep -Fq '[FastFetchDebug] target probe starting' main.js
+          grep -Fq '[FastFetchDebug] status probe response status:' main.js
+          grep -Fq '[FastFetchDebug] page fetch starting' main.js
           if [ -f styles.css ]; then echo "styles.css present"; else echo "styles.css not present; continuing"; fi
 
       - name: Assemble test plugin
@@ -119,15 +162,15 @@ jobs:
           cp main.js manifest.json artifact/
           if [ -f styles.css ]; then cp styles.css artifact/; fi
           printf '%s\n' \
-            'Experimental Android Fast Fetch diagnostic build.' \
+            'Experimental Android Fast Fetch diagnostic build v2.' \
             'Commonlib branch: Tideus/livesync-commonlib@fix/android-fast-fetch-normal-feed' \
             'Fast Fetch uses finite CouchDB feed=normal pages instead of ReadableStream feed=continuous.' \
-            'This build logs [FastFetchDebug] checkpoints through the recovery flow.' \
+            'This build logs both Rebuilder and StreamingFetch [FastFetchDebug] checkpoints.' \
             > artifact/TEST-BUILD.txt
 
       - name: Upload plugin artifact
         uses: actions/upload-artifact@v4
         with:
-          name: obsidian-livesync-android-fast-fetch-diagnostic
+          name: obsidian-livesync-android-fast-fetch-diagnostic-v2
           path: artifact/
           if-no-files-found: error
