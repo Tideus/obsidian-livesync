@@ -58,7 +58,7 @@ jobs:
           grep -Fq '[FastFetchDebug] fetchChangesForInitialSync entered' main.js
           grep -Fq '[FastFetchDebug] page fetch starting' main.js
           grep -Fq '[FastFetchDebug] requestUrl transport begin:' main.js
-          grep -Fq 'setFetch' commonlib/dist/common/coreEnvFunctions.js
+          grep -Fq 'setFetch' commonlib/.package/dist/common/coreEnvFunctions.js
           grep -Fq 'rowCount' commonlib/src/pouchdb/StreamingFetch.ts
 
       - name: Assemble plugin artifact
