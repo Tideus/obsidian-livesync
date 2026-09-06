@@ -14,7 +14,7 @@ old = '''        const pageSize = 10;
 new = '''        let pageSize = 10;
         let fastPageStreak = 0;
         const minPageSize = 5;
-        const maxPageSize = 30;
+        const maxPageSize = 10;
 
         while (true) {
             const pageStartedAt = Date.now();
@@ -24,7 +24,7 @@ new = '''        let pageSize = 10;
             } catch (error) {
                 if (pageSize > minPageSize) {
                     const previousPageSize = pageSize;
-                    pageSize = Math.max(minPageSize, Math.floor(pageSize / 2));
+                    pageSize = minPageSize;
                     fastPageStreak = 0;
                     Logger(
                         `[FastFetchDebug] adaptive page fetch failed; reducing page size ${previousPageSize} -> ${pageSize}`
@@ -43,7 +43,7 @@ new = '''        let pageSize = 10;
                 fastPageStreak++;
                 if (fastPageStreak >= 3 && pageSize < maxPageSize) {
                     const previousPageSize = pageSize;
-                    pageSize = Math.min(maxPageSize, pageSize + 10);
+                    pageSize = maxPageSize;
                     fastPageStreak = 0;
                     Logger(
                         `[FastFetchDebug] adaptive page size increased ${previousPageSize} -> ${pageSize}`
@@ -53,7 +53,7 @@ new = '''        let pageSize = 10;
                 fastPageStreak = 0;
                 if (pageElapsedMs >= 5000 && pageSize > minPageSize) {
                     const previousPageSize = pageSize;
-                    pageSize = Math.max(minPageSize, Math.floor(pageSize / 2));
+                    pageSize = minPageSize;
                     Logger(
                         `[FastFetchDebug] adaptive slow page; reducing page size ${previousPageSize} -> ${pageSize}`
                     );
@@ -68,4 +68,4 @@ if old not in s:
     raise SystemExit("adaptive page anchor not found")
 
 p.write_text(s.replace(old, new, 1))
-print("Fast Fetch adaptive page sizing applied: start=10 min=5 max=30")
+print("Fast Fetch adaptive page sizing applied: start=10 min=5 max=10")
