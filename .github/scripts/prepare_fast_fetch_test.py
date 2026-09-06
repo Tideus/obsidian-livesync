@@ -115,7 +115,7 @@ replace_once(
         let started = false;
 
         while (true) {
-            const page = await fetchPageNormal(pageSince, FAST_FETCH_CHANGES_PAGE_LIMIT);
+            const page = await fetchPageNormal(pageSince, 1);
             pageSince = page.lastSequence;
             docsToFetch = Math.max(docsToFetch, totalFetched + page.pending);
 
@@ -132,7 +132,6 @@ replace_once(
     "direct page loop",
 )
 
-# Rebuilder diagnostics.
 replacements = [
     (
         '    async fetchLocalDBFast(autoResume: boolean) {\n        await this.setting.suspendExtraSync();',
@@ -166,7 +165,6 @@ replacements = [
 for index, (old, new) in enumerate(replacements, 1):
     replace_once(rebuilder, old, new, f"rebuilder diagnostic {index}")
 
-# StreamingFetch diagnostics.
 replacements = [
     (
         '    let totalFetched = 0;\n    let totalValidFetched = 0;',
@@ -196,4 +194,4 @@ replacements = [
 for index, (old, new) in enumerate(replacements, 1):
     replace_once(streaming, old, new, f"stream diagnostic {index}")
 
-print("Fast Fetch direct-page patch and diagnostics applied")
+print("Fast Fetch one-row direct-page patch and diagnostics applied")
