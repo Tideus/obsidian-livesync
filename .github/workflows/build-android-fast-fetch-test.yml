@@ -24,6 +24,7 @@ jobs:
         run: |
           python .github/scripts/prepare_fast_fetch_test.py
           python .github/scripts/patch_mobile_fast_fetch_transport.py
+          python .github/scripts/patch_android_crypto_worker_recovery.py
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -58,6 +59,8 @@ jobs:
           grep -Fq '[FastFetchDebug] fetchChangesForInitialSync entered' main.js
           grep -Fq '[FastFetchDebug] page fetch starting' main.js
           grep -Fq '[FastFetchDebug] requestUrl transport begin:' main.js
+          grep -Fq 'crypto worker timeout' main.js
+          grep -Fq 'direct fallback' main.js
           grep -Fq 'setFetch' commonlib/.package/dist/common/coreEnvFunctions.js
           grep -Fq 'rowCount' commonlib/src/pouchdb/StreamingFetch.ts
 
@@ -67,14 +70,14 @@ jobs:
           cp main.js manifest.json artifact/
           if [ -f styles.css ]; then cp styles.css artifact/; fi
           printf '%s\n' \
-            'Android Fast Fetch native requestUrl transport test build.' \
-            'Finite feed=normal CouchDB _changes requests use Obsidian requestUrl on mobile.' \
-            'Desktop and non-_changes requests keep the browser fetch transport.' \
+            'Android Fast Fetch requestUrl + crypto worker recovery test build.' \
+            'CouchDB _changes uses Obsidian requestUrl on mobile with retries/timeouts.' \
+            'Background crypto gets a 10s timeout and direct main-thread fallback.' \
             > artifact/TEST-BUILD.txt
 
       - name: Upload plugin artifact
         uses: actions/upload-artifact@v4
         with:
-          name: obsidian-livesync-android-fast-fetch-requesturl
+          name: obsidian-livesync-android-fast-fetch-crypto-recovery
           path: artifact/
           if-no-files-found: error
