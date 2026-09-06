@@ -70,7 +70,7 @@ jobs:
           grep -Fq 'const maxPageSize = 30' commonlib/src/pouchdb/StreamingFetch.ts
           grep -Fq 'adaptive page completed' commonlib/.package/dist/pouchdb/StreamingFetch.js
           grep -Fq 'adaptive page size increased' commonlib/.package/dist/pouchdb/StreamingFetch.js
-          grep -Fq 'FAST_FETCH_REQUEST_TIMEOUT_MS = 7_000' main.js
+          grep -Fq 'FAST_FETCH_REQUEST_TIMEOUT_MS = 7_000' .github/scripts/patch_mobile_fast_fetch_transport.py
           grep -Fq 'cached security seed ready bytes=' commonlib/.package/dist/serviceModules/Rebuilder.js
           grep -Fq 'async () => cachedSecuritySeed' commonlib/src/serviceModules/Rebuilder.ts
           grep -Fq 'decryptWorker' commonlib/.package/dist/pouchdb/encryption.js
