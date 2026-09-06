@@ -68,13 +68,15 @@ jobs:
           grep -Fq 'rowCount' commonlib/src/pouchdb/StreamingFetch.ts
           grep -Fq 'let pageSize = 10' commonlib/src/pouchdb/StreamingFetch.ts
           grep -Fq 'const minPageSize = 5' commonlib/src/pouchdb/StreamingFetch.ts
-          grep -Fq 'const maxPageSize = 30' commonlib/src/pouchdb/StreamingFetch.ts
+          grep -Fq 'const maxPageSize = 10' commonlib/src/pouchdb/StreamingFetch.ts
           grep -Fq 'adaptive page completed' commonlib/.package/dist/pouchdb/StreamingFetch.js
           grep -Fq 'adaptive page size increased' commonlib/.package/dist/pouchdb/StreamingFetch.js
           grep -Fq '[FastFetchProgress] start local=' commonlib/.package/dist/pouchdb/StreamingFetch.js
           grep -Fq '[FastFetchProgress] requesting page=' commonlib/.package/dist/pouchdb/StreamingFetch.js
           grep -Fq '[FastFetchProgress] downloaded=' commonlib/.package/dist/pouchdb/StreamingFetch.js
           grep -Fq 'FAST_FETCH_REQUEST_TIMEOUT_MS = 7_000' .github/scripts/patch_mobile_fast_fetch_transport.py
+          grep -Fq 'FAST_FETCH_REQUEST_ATTEMPTS = 1' .github/scripts/patch_mobile_fast_fetch_transport.py
+          grep -Fq 'requestUrlSingleAttempt' main.js
           grep -Fq 'cached security seed ready bytes=' commonlib/.package/dist/serviceModules/Rebuilder.js
           grep -Fq 'async () => cachedSecuritySeed' commonlib/src/serviceModules/Rebuilder.ts
           grep -Fq 'decryptWorker' commonlib/.package/dist/pouchdb/encryption.js
@@ -86,18 +88,18 @@ jobs:
           cp main.js manifest.json artifact/
           if [ -f styles.css ]; then cp styles.css artifact/; fi
           printf '%s\n' \
-            'Android Fast Fetch adaptive-page + 7-second timeout + visible progress counters test build.' \
+            'Android Fast Fetch single-attempt requestUrl + adaptive 5-10 pages + visible progress test build.' \
             'CouchDB _changes and sync parameters use Obsidian requestUrl on mobile.' \
+            'Each native requestUrl call has one attempt with a 7-second watchdog; adaptive Fast Fetch owns retries.' \
+            'Adaptive page size starts at 10, drops to 5 on timeout/slow pages, and returns to 10 after three fast pages.' \
             'Security Seed is read once before Fast Fetch and reused for crypto.' \
-            'Adaptive page size starts at 10, reduces to 5 on failures/slow pages, and can grow to 30 after fast pages.' \
             'FastFetchProgress logs local document estimate, downloaded/valid counts, remaining estimate, and current page size.' \
-            'Native requestUrl watchdog timeout is 7 seconds with 4 attempts.' \
             'Standard Web Worker crypto remains enabled.' \
             > artifact/TEST-BUILD.txt
 
       - name: Upload plugin artifact
         uses: actions/upload-artifact@v4
         with:
-          name: obsidian-livesync-android-fast-fetch-adaptive-7s-progress
+          name: obsidian-livesync-android-fast-fetch-single-7s-adaptive-progress
           path: artifact/
           if-no-files-found: error
