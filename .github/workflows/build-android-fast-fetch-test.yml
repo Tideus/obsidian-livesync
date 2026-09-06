@@ -24,7 +24,7 @@ jobs:
         run: |
           python .github/scripts/prepare_fast_fetch_test.py
           python .github/scripts/patch_mobile_fast_fetch_transport.py
-          python .github/scripts/patch_android_crypto_worker_recovery.py
+          python .github/scripts/patch_android_direct_crypto.py
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -61,9 +61,9 @@ jobs:
           grep -Fq '[FastFetchDebug] requestUrl transport begin:' main.js
           grep -Fq 'setFetch' commonlib/.package/dist/common/coreEnvFunctions.js
           grep -Fq 'rowCount' commonlib/src/pouchdb/StreamingFetch.ts
-          grep -Fq 'crypto worker timeout fired' commonlib/.package/dist/worker/bgWorker.encryption.js
-          grep -Fq 'direct crypto fallback starting' commonlib/.package/dist/worker/bgWorker.encryption.js
-          grep -Fq 'direct crypto fallback completed' commonlib/.package/dist/worker/bgWorker.encryption.js
+          grep -Fq 'directEncrypt' commonlib/.package/dist/pouchdb/encryption.js
+          grep -Fq 'directDecrypt' commonlib/.package/dist/pouchdb/encryption.js
+          ! grep -Fq 'decryptWorker' commonlib/.package/dist/pouchdb/encryption.js
 
       - name: Assemble plugin artifact
         run: |
@@ -71,14 +71,14 @@ jobs:
           cp main.js manifest.json artifact/
           if [ -f styles.css ]; then cp styles.css artifact/; fi
           printf '%s\n' \
-            'Android Fast Fetch requestUrl + crypto worker recovery test build.' \
+            'Android Fast Fetch requestUrl + direct crypto test build.' \
             'CouchDB _changes uses Obsidian requestUrl on mobile with retries/timeouts.' \
-            'Background crypto gets a 10s timeout and direct main-thread fallback.' \
+            'Crypto bypasses Web Workers and runs directly to avoid Android 16 worker stalls.' \
             > artifact/TEST-BUILD.txt
 
       - name: Upload plugin artifact
         uses: actions/upload-artifact@v4
         with:
-          name: obsidian-livesync-android-fast-fetch-crypto-recovery
+          name: obsidian-livesync-android-fast-fetch-direct-crypto
           path: artifact/
           if-no-files-found: error
