@@ -59,10 +59,11 @@ jobs:
           grep -Fq '[FastFetchDebug] fetchChangesForInitialSync entered' main.js
           grep -Fq '[FastFetchDebug] page fetch starting' main.js
           grep -Fq '[FastFetchDebug] requestUrl transport begin:' main.js
-          grep -Fq 'crypto worker timeout' main.js
-          grep -Fq 'direct fallback' main.js
           grep -Fq 'setFetch' commonlib/.package/dist/common/coreEnvFunctions.js
           grep -Fq 'rowCount' commonlib/src/pouchdb/StreamingFetch.ts
+          grep -Fq 'crypto worker timeout fired' commonlib/.package/dist/worker/bgWorker.encryption.js
+          grep -Fq 'direct crypto fallback starting' commonlib/.package/dist/worker/bgWorker.encryption.js
+          grep -Fq 'direct crypto fallback completed' commonlib/.package/dist/worker/bgWorker.encryption.js
 
       - name: Assemble plugin artifact
         run: |
