@@ -61,6 +61,7 @@ jobs:
           grep -Fq '[FastFetchDebug] requestUrl transport begin:' main.js
           grep -Fq 'setFetch' commonlib/.package/dist/common/coreEnvFunctions.js
           grep -Fq 'rowCount' commonlib/src/pouchdb/StreamingFetch.ts
+          grep -Fq 'const pageSize = 50' commonlib/src/pouchdb/StreamingFetch.ts
           grep -Fq 'cached security seed ready bytes=' commonlib/.package/dist/serviceModules/Rebuilder.js
           grep -Fq 'async () => cachedSecuritySeed' commonlib/src/serviceModules/Rebuilder.ts
           grep -Fq 'decryptWorker' commonlib/.package/dist/pouchdb/encryption.js
@@ -72,15 +73,16 @@ jobs:
           cp main.js manifest.json artifact/
           if [ -f styles.css ]; then cp styles.css artifact/; fi
           printf '%s\n' \
-            'Android Fast Fetch requestUrl + cached security seed test build.' \
+            'Android Fast Fetch requestUrl + cached security seed + 50-row pages test build.' \
             'CouchDB _changes uses Obsidian requestUrl on mobile with retries/timeouts.' \
             'Security Seed is read once before Fast Fetch and reused for all crypto operations.' \
+            'Fast Fetch requests up to 50 changes per CouchDB page instead of one request per document.' \
             'Standard Web Worker crypto remains enabled.' \
             > artifact/TEST-BUILD.txt
 
       - name: Upload plugin artifact
         uses: actions/upload-artifact@v4
         with:
-          name: obsidian-livesync-android-fast-fetch-cached-seed
+          name: obsidian-livesync-android-fast-fetch-page50
           path: artifact/
           if-no-files-found: error
