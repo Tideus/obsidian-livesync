@@ -24,6 +24,7 @@ jobs:
         run: |
           python .github/scripts/prepare_fast_fetch_test.py
           python .github/scripts/patch_fast_fetch_page10.py
+          python .github/scripts/patch_fast_fetch_adaptive_pages.py
           python .github/scripts/patch_mobile_fast_fetch_transport.py
           python .github/scripts/patch_fast_fetch_cached_security_seed.py
 
@@ -64,7 +65,12 @@ jobs:
           grep -Fq '_local/obsidian_livesync_sync_parameters' main.js
           grep -Fq 'setFetch' commonlib/.package/dist/common/coreEnvFunctions.js
           grep -Fq 'rowCount' commonlib/src/pouchdb/StreamingFetch.ts
-          grep -Fq 'const pageSize = 10' commonlib/src/pouchdb/StreamingFetch.ts
+          grep -Fq 'let pageSize = 10' commonlib/src/pouchdb/StreamingFetch.ts
+          grep -Fq 'const minPageSize = 5' commonlib/src/pouchdb/StreamingFetch.ts
+          grep -Fq 'const maxPageSize = 30' commonlib/src/pouchdb/StreamingFetch.ts
+          grep -Fq 'adaptive page completed' commonlib/.package/dist/pouchdb/StreamingFetch.js
+          grep -Fq 'adaptive page size increased' commonlib/.package/dist/pouchdb/StreamingFetch.js
+          grep -Fq 'FAST_FETCH_REQUEST_TIMEOUT_MS = 7_000' main.js
           grep -Fq 'cached security seed ready bytes=' commonlib/.package/dist/serviceModules/Rebuilder.js
           grep -Fq 'async () => cachedSecuritySeed' commonlib/src/serviceModules/Rebuilder.ts
           grep -Fq 'decryptWorker' commonlib/.package/dist/pouchdb/encryption.js
@@ -76,16 +82,17 @@ jobs:
           cp main.js manifest.json artifact/
           if [ -f styles.css ]; then cp styles.css artifact/; fi
           printf '%s\n' \
-            'Android Fast Fetch requestUrl + native sync params + cached security seed + 10-row pages test build.' \
-            'CouchDB _changes and _local/obsidian_livesync_sync_parameters use Obsidian requestUrl on mobile with retries/timeouts.' \
-            'Security Seed is read once before Fast Fetch and reused for all crypto operations.' \
-            'Fast Fetch requests up to 10 changes per CouchDB page to avoid large Android requestUrl stalls.' \
+            'Android Fast Fetch adaptive-page + 7-second timeout test build.' \
+            'CouchDB _changes and sync parameters use Obsidian requestUrl on mobile.' \
+            'Security Seed is read once before Fast Fetch and reused for crypto.' \
+            'Adaptive page size starts at 10, reduces to 5 on failures/slow pages, and can grow to 30 after fast pages.' \
+            'Native requestUrl watchdog timeout is 7 seconds with 4 attempts.' \
             'Standard Web Worker crypto remains enabled.' \
             > artifact/TEST-BUILD.txt
 
       - name: Upload plugin artifact
         uses: actions/upload-artifact@v4
         with:
-          name: obsidian-livesync-android-fast-fetch-page10-native-seed
+          name: obsidian-livesync-android-fast-fetch-adaptive-7s
           path: artifact/
           if-no-files-found: error
