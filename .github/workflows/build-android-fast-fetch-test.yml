@@ -21,7 +21,9 @@ jobs:
           path: commonlib
 
       - name: Apply Fast Fetch test patch
-        run: python .github/scripts/prepare_fast_fetch_test.py
+        run: |
+          python .github/scripts/prepare_fast_fetch_test.py
+          python .github/scripts/patch_mobile_fast_fetch_transport.py
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -55,6 +57,8 @@ jobs:
           test -f manifest.json
           grep -Fq '[FastFetchDebug] fetchChangesForInitialSync entered' main.js
           grep -Fq '[FastFetchDebug] page fetch starting' main.js
+          grep -Fq '[FastFetchDebug] requestUrl transport begin:' main.js
+          grep -Fq 'setFetch' commonlib/dist/common/coreEnvFunctions.js
           grep -Fq 'rowCount' commonlib/src/pouchdb/StreamingFetch.ts
 
       - name: Assemble plugin artifact
@@ -63,14 +67,14 @@ jobs:
           cp main.js manifest.json artifact/
           if [ -f styles.css ]; then cp styles.css artifact/; fi
           printf '%s\n' \
-            'Android Fast Fetch direct-page test build.' \
-            'The since=0 status pre-probe is bypassed.' \
-            'Finite feed=normal pages are fetched directly.' \
+            'Android Fast Fetch native requestUrl transport test build.' \
+            'Finite feed=normal CouchDB _changes requests use Obsidian requestUrl on mobile.' \
+            'Desktop and non-_changes requests keep the browser fetch transport.' \
             > artifact/TEST-BUILD.txt
 
       - name: Upload plugin artifact
         uses: actions/upload-artifact@v4
         with:
-          name: obsidian-livesync-android-fast-fetch-direct-page
+          name: obsidian-livesync-android-fast-fetch-requesturl
           path: artifact/
           if-no-files-found: error
