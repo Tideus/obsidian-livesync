@@ -25,6 +25,7 @@ jobs:
           python .github/scripts/prepare_fast_fetch_test.py
           python .github/scripts/patch_fast_fetch_page10.py
           python .github/scripts/patch_fast_fetch_adaptive_pages.py
+          python .github/scripts/patch_fast_fetch_progress_logging.py
           python .github/scripts/patch_mobile_fast_fetch_transport.py
           python .github/scripts/patch_fast_fetch_cached_security_seed.py
 
@@ -70,6 +71,9 @@ jobs:
           grep -Fq 'const maxPageSize = 30' commonlib/src/pouchdb/StreamingFetch.ts
           grep -Fq 'adaptive page completed' commonlib/.package/dist/pouchdb/StreamingFetch.js
           grep -Fq 'adaptive page size increased' commonlib/.package/dist/pouchdb/StreamingFetch.js
+          grep -Fq '[FastFetchProgress] start local=' commonlib/.package/dist/pouchdb/StreamingFetch.js
+          grep -Fq '[FastFetchProgress] requesting page=' commonlib/.package/dist/pouchdb/StreamingFetch.js
+          grep -Fq '[FastFetchProgress] downloaded=' commonlib/.package/dist/pouchdb/StreamingFetch.js
           grep -Fq 'FAST_FETCH_REQUEST_TIMEOUT_MS = 7_000' .github/scripts/patch_mobile_fast_fetch_transport.py
           grep -Fq 'cached security seed ready bytes=' commonlib/.package/dist/serviceModules/Rebuilder.js
           grep -Fq 'async () => cachedSecuritySeed' commonlib/src/serviceModules/Rebuilder.ts
@@ -82,10 +86,11 @@ jobs:
           cp main.js manifest.json artifact/
           if [ -f styles.css ]; then cp styles.css artifact/; fi
           printf '%s\n' \
-            'Android Fast Fetch adaptive-page + 7-second timeout test build.' \
+            'Android Fast Fetch adaptive-page + 7-second timeout + visible progress counters test build.' \
             'CouchDB _changes and sync parameters use Obsidian requestUrl on mobile.' \
             'Security Seed is read once before Fast Fetch and reused for crypto.' \
             'Adaptive page size starts at 10, reduces to 5 on failures/slow pages, and can grow to 30 after fast pages.' \
+            'FastFetchProgress logs local document estimate, downloaded/valid counts, remaining estimate, and current page size.' \
             'Native requestUrl watchdog timeout is 7 seconds with 4 attempts.' \
             'Standard Web Worker crypto remains enabled.' \
             > artifact/TEST-BUILD.txt
@@ -93,6 +98,6 @@ jobs:
       - name: Upload plugin artifact
         uses: actions/upload-artifact@v4
         with:
-          name: obsidian-livesync-android-fast-fetch-adaptive-7s
+          name: obsidian-livesync-android-fast-fetch-adaptive-7s-progress
           path: artifact/
           if-no-files-found: error
