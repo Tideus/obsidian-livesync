@@ -14,6 +14,7 @@ import { type EncryptHKDFProcessItem, type ResultPayload } from "./universalType
 import { type EncryptProcessItem } from "./universalTypes.ts";
 import { type EncryptHKDFArguments } from "./universalTypes.ts";
 import { type EncryptArguments } from "./universalTypes.ts";
+import { Logger, LOG_LEVEL_NOTICE } from "@lib/common/logger";
 import { encrypt as directEncrypt, decrypt as directDecrypt } from "octagonal-wheels/encryption";
 import { encrypt as directEncryptHKDF, decrypt as directDecryptHKDF } from "octagonal-wheels/encryption/hkdf";
 
@@ -49,12 +50,14 @@ new_v1 = '''export function encryptionOnWorker(data: Omit<EncryptArguments, "key
         } catch (ex) {
             const timedOut = ex instanceof Error && ex.message.includes("Background crypto worker timed out");
             if (!timedOut) throw ex;
-            console.warn(`[FastFetchDebug] crypto worker timeout task=${process.key} type=${data.type}; using direct fallback`);
+            Logger(`[FastFetchDebug] crypto worker timeout fired task=${process.key} type=${data.type}`, LOG_LEVEL_NOTICE);
             removeTask(process.key);
-            if (data.type === "encrypt") {
-                return await directEncrypt(data.input, data.passphrase, data.autoCalculateIterations);
-            }
-            return await directDecrypt(data.input, data.passphrase, data.autoCalculateIterations);
+            Logger(`[FastFetchDebug] direct crypto fallback starting task=${process.key} type=${data.type}`, LOG_LEVEL_NOTICE);
+            const result = data.type === "encrypt"
+                ? await directEncrypt(data.input, data.passphrase, data.autoCalculateIterations)
+                : await directDecrypt(data.input, data.passphrase, data.autoCalculateIterations);
+            Logger(`[FastFetchDebug] direct crypto fallback completed task=${process.key} type=${data.type}`, LOG_LEVEL_NOTICE);
+            return result;
         } finally {
             process.finalize();
         }
@@ -82,12 +85,14 @@ new_hkdf = '''export function encryptionHKDFOnWorker(data: Omit<EncryptHKDFArgum
         } catch (ex) {
             const timedOut = ex instanceof Error && ex.message.includes("Background crypto worker timed out");
             if (!timedOut) throw ex;
-            console.warn(`[FastFetchDebug] crypto worker timeout task=${process.key} type=${data.type}; using direct fallback`);
+            Logger(`[FastFetchDebug] crypto worker timeout fired task=${process.key} type=${data.type}`, LOG_LEVEL_NOTICE);
             removeTask(process.key);
-            if (data.type === "encryptHKDF") {
-                return await directEncryptHKDF(data.input, data.passphrase, data.pbkdf2Salt);
-            }
-            return await directDecryptHKDF(data.input, data.passphrase, data.pbkdf2Salt);
+            Logger(`[FastFetchDebug] direct crypto fallback starting task=${process.key} type=${data.type}`, LOG_LEVEL_NOTICE);
+            const result = data.type === "encryptHKDF"
+                ? await directEncryptHKDF(data.input, data.passphrase, data.pbkdf2Salt)
+                : await directDecryptHKDF(data.input, data.passphrase, data.pbkdf2Salt);
+            Logger(`[FastFetchDebug] direct crypto fallback completed task=${process.key} type=${data.type}`, LOG_LEVEL_NOTICE);
+            return result;
         } finally {
             process.finalize();
         }
@@ -99,4 +104,4 @@ if old_hkdf not in s:
 s = s.replace(old_hkdf, new_hkdf, 1)
 
 p.write_text(s)
-print("Crypto worker timeout/direct fallback patch applied")
+print("Crypto worker timeout/direct fallback patch applied with LiveSync-visible diagnostics")
