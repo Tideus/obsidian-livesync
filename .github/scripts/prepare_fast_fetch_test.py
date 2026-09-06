@@ -113,9 +113,10 @@ replace_once(
     try {
         let pageSince: DBSequence = since;
         let started = false;
+        const pageSize = 50;
 
         while (true) {
-            const page = await fetchPageNormal(pageSince, 1);
+            const page = await fetchPageNormal(pageSince, pageSize);
             pageSince = page.lastSequence;
             docsToFetch = Math.max(docsToFetch, totalFetched + page.pending);
 
@@ -254,4 +255,4 @@ replace_once(
     "serialise diagnostics end",
 )
 
-print("Fast Fetch one-row direct-page patch with deep processing diagnostics applied")
+print("Fast Fetch 50-row direct-page patch with deep processing diagnostics applied")
