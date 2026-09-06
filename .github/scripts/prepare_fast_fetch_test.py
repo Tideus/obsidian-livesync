@@ -194,4 +194,64 @@ replacements = [
 for index, (old, new) in enumerate(replacements, 1):
     replace_once(streaming, old, new, f"stream diagnostic {index}")
 
-print("Fast Fetch one-row direct-page patch and diagnostics applied")
+replace_once(
+    streaming,
+    '        const page = parseJSONResponse<NormalChangesPage>(raw, "parse a bounded normal changes page");',
+    '        Logger("[FastFetchDebug] page JSON parse starting");\n        const page = parseJSONResponse<NormalChangesPage>(raw, "parse a bounded normal changes page");\n        Logger(`[FastFetchDebug] page JSON parse completed rows=${Array.isArray(page.results) ? page.results.length : -1} pending=${page.pending}`);',
+    "page parse diagnostics",
+)
+
+replace_once(
+    streaming,
+    '''            totalFetched++;
+            if (change.doc) {
+                await batchWriter.write(change.doc, change.seq);
+                totalValidFetched++;
+            } else {''',
+    '''            totalFetched++;
+            Logger(`[FastFetchDebug] change begin id=${change.id} seq=${String(change.seq)} hasDoc=${Boolean(change.doc)}`);
+            if (change.doc) {
+                Logger(`[FastFetchDebug] batchWriter.write starting id=${change.id}`);
+                await batchWriter.write(change.doc, change.seq);
+                Logger(`[FastFetchDebug] batchWriter.write completed id=${change.id}`);
+                totalValidFetched++;
+            } else {''',
+    "change write diagnostics",
+)
+
+replace_once(
+    streaming,
+    '''                try {
+                    decryptedDoc = await decryptFunction(doc);
+                } catch (error) {''',
+    '''                try {
+                    Logger(`[FastFetchDebug] decrypt starting id=${doc._id}`);
+                    decryptedDoc = await decryptFunction(doc);
+                    Logger(`[FastFetchDebug] decrypt completed id=${doc._id}`);
+                } catch (error) {''',
+    "decrypt diagnostics",
+)
+
+replace_once(
+    streaming,
+    '''            let serialisedDoc: string;
+            try {
+                const serialised = JSON.stringify(decryptedDoc);''',
+    '''            let serialisedDoc: string;
+            try {
+                Logger(`[FastFetchDebug] serialise starting id=${doc._id}`);
+                const serialised = JSON.stringify(decryptedDoc);''',
+    "serialise diagnostics start",
+)
+
+replace_once(
+    streaming,
+    '''                serialisedDoc = serialised;
+            } catch (error) {''',
+    '''                serialisedDoc = serialised;
+                Logger(`[FastFetchDebug] serialise completed id=${doc._id} length=${serialisedDoc.length}`);
+            } catch (error) {''',
+    "serialise diagnostics end",
+)
+
+print("Fast Fetch one-row direct-page patch with deep processing diagnostics applied")
