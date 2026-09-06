@@ -3,21 +3,13 @@ from pathlib import Path
 p = Path("commonlib/src/serviceModules/Rebuilder.ts")
 s = p.read_text()
 
-old_seed = '''        const securitySeed = await this.replicator.createRemoteResource(REMOTE_RESOURCE_KINDS.SECURITY_SEED, settings);
+seed_anchor = '''        this._log("[FastFetchDebug] Fast Fetch: security seed request returned", LOG_LEVEL_NOTICE);
         if (!securitySeed) {
             throw new Error("The selected provider cannot supply a Security Seed for Fast Fetch.");
         }
         try {
-            const enc = getConfiguredFunctionsForEncryption(
-                settings.passphrase,
-                false,
-                false,
-                () => securitySeed.read(),
-                settings.E2EEAlgorithm
-            );
 '''
-
-new_seed = '''        const securitySeed = await this.replicator.createRemoteResource(REMOTE_RESOURCE_KINDS.SECURITY_SEED, settings);
+seed_replacement = '''        this._log("[FastFetchDebug] Fast Fetch: security seed request returned", LOG_LEVEL_NOTICE);
         if (!securitySeed) {
             throw new Error("The selected provider cannot supply a Security Seed for Fast Fetch.");
         }
@@ -28,18 +20,19 @@ new_seed = '''        const securitySeed = await this.replicator.createRemoteRes
                 `[FastFetchDebug] Fast Fetch: cached security seed ready bytes=${cachedSecuritySeed.byteLength}`,
                 LOG_LEVEL_NOTICE
             );
-            const enc = getConfiguredFunctionsForEncryption(
-                settings.passphrase,
-                false,
-                false,
-                async () => cachedSecuritySeed,
-                settings.E2EEAlgorithm
-            );
 '''
 
-if old_seed not in s:
-    raise SystemExit("cached security seed anchor not found")
+callback_anchor = '''                () => securitySeed.read(),
+'''
+callback_replacement = '''                async () => cachedSecuritySeed,
+'''
 
-s = s.replace(old_seed, new_seed, 1)
+if seed_anchor not in s:
+    raise SystemExit("cached security seed insertion anchor not found")
+if callback_anchor not in s:
+    raise SystemExit("cached security seed callback anchor not found")
+
+s = s.replace(seed_anchor, seed_replacement, 1)
+s = s.replace(callback_anchor, callback_replacement, 1)
 p.write_text(s)
 print("Fast Fetch cached security seed patch applied")
