@@ -24,7 +24,7 @@ jobs:
         run: |
           python .github/scripts/prepare_fast_fetch_test.py
           python .github/scripts/patch_mobile_fast_fetch_transport.py
-          python .github/scripts/patch_android_direct_crypto.py
+          python .github/scripts/patch_fast_fetch_cached_security_seed.py
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -61,9 +61,10 @@ jobs:
           grep -Fq '[FastFetchDebug] requestUrl transport begin:' main.js
           grep -Fq 'setFetch' commonlib/.package/dist/common/coreEnvFunctions.js
           grep -Fq 'rowCount' commonlib/src/pouchdb/StreamingFetch.ts
-          grep -Fq 'directEncrypt' commonlib/.package/dist/pouchdb/encryption.js
-          grep -Fq 'directDecrypt' commonlib/.package/dist/pouchdb/encryption.js
-          ! grep -Fq 'decryptWorker' commonlib/.package/dist/pouchdb/encryption.js
+          grep -Fq 'cached security seed ready bytes=' commonlib/.package/dist/serviceModules/Rebuilder.js
+          grep -Fq 'async () => cachedSecuritySeed' commonlib/src/serviceModules/Rebuilder.ts
+          grep -Fq 'decryptWorker' commonlib/.package/dist/pouchdb/encryption.js
+          grep -Fq 'decryptHKDFWorker' commonlib/.package/dist/pouchdb/encryption.js
 
       - name: Assemble plugin artifact
         run: |
@@ -71,14 +72,15 @@ jobs:
           cp main.js manifest.json artifact/
           if [ -f styles.css ]; then cp styles.css artifact/; fi
           printf '%s\n' \
-            'Android Fast Fetch requestUrl + direct crypto test build.' \
+            'Android Fast Fetch requestUrl + cached security seed test build.' \
             'CouchDB _changes uses Obsidian requestUrl on mobile with retries/timeouts.' \
-            'Crypto bypasses Web Workers and runs directly to avoid Android 16 worker stalls.' \
+            'Security Seed is read once before Fast Fetch and reused for all crypto operations.' \
+            'Standard Web Worker crypto remains enabled.' \
             > artifact/TEST-BUILD.txt
 
       - name: Upload plugin artifact
         uses: actions/upload-artifact@v4
         with:
-          name: obsidian-livesync-android-fast-fetch-direct-crypto
+          name: obsidian-livesync-android-fast-fetch-cached-seed
           path: artifact/
           if-no-files-found: error
