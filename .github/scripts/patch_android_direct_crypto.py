@@ -9,5 +9,9 @@ new = '''import { encrypt as directEncrypt, decrypt as directDecrypt } from "oct
 if old not in s:
     raise SystemExit("direct crypto anchor not found")
 
-p.write_text(s.replace(old, new, 1))
+s = s.replace(old, new, 1)
+s = s.replace("encryptHKDFWorker(", "directEncryptHKDF(")
+s = s.replace("decryptHKDFWorker(", "directDecryptHKDF(")
+
+p.write_text(s)
 print("Android direct crypto bypass patch applied")
