@@ -13,6 +13,7 @@ old = '''        const pageSize = 10;
 
 new = '''        let pageSize = 10;
         let fastPageStreak = 0;
+        let minPageFailureStreak = 0;
         const minPageSize = 5;
         const maxPageSize = 10;
 
@@ -22,18 +23,27 @@ new = '''        let pageSize = 10;
             try {
                 page = await fetchPageNormal(pageSince, pageSize);
             } catch (error) {
+                fastPageStreak = 0;
                 if (pageSize > minPageSize) {
                     const previousPageSize = pageSize;
                     pageSize = minPageSize;
-                    fastPageStreak = 0;
+                    minPageFailureStreak = 0;
                     Logger(
                         `[FastFetchDebug] adaptive page fetch failed; reducing page size ${previousPageSize} -> ${pageSize}`
                     );
                     continue;
                 }
-                throw error;
+
+                minPageFailureStreak++;
+                const retryDelayMs = Math.min(5000, 1000 * minPageFailureStreak);
+                Logger(
+                    `[FastFetchDebug] adaptive min-page fetch failed; preserving checkpoint and retrying same page in ${retryDelayMs}ms streak=${minPageFailureStreak}`
+                );
+                await new Promise<void>((resolve) => setTimeout(resolve, retryDelayMs));
+                continue;
             }
 
+            minPageFailureStreak = 0;
             const pageElapsedMs = Date.now() - pageStartedAt;
             Logger(
                 `[FastFetchDebug] adaptive page completed size=${pageSize} rows=${page.rowCount} elapsed=${pageElapsedMs}ms pending=${page.pending}`
@@ -68,4 +78,4 @@ if old not in s:
     raise SystemExit("adaptive page anchor not found")
 
 p.write_text(s.replace(old, new, 1))
-print("Fast Fetch adaptive page sizing applied: start=10 min=5 max=10")
+print("Fast Fetch adaptive page sizing applied: start=10 min=5 max=10 with in-place min-page retries")
