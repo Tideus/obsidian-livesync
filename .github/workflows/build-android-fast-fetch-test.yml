@@ -1,0 +1,70 @@
+name: Build Android Fast Fetch test
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - fix/android-fast-fetch-normal-feed
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout obsidian-livesync fork
+        uses: actions/checkout@v4
+
+      - name: Checkout patched livesync-commonlib
+        uses: actions/checkout@v4
+        with:
+          repository: Tideus/livesync-commonlib
+          ref: fix/android-fast-fetch-normal-feed
+          path: commonlib
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Build patched commonlib package
+        working-directory: commonlib
+        run: |
+          npm ci
+          npm run build:package
+          npm pack ./.package --pack-destination ..
+
+      - name: Install LiveSync dependencies
+        run: npm ci
+
+      - name: Replace commonlib with patched package
+        run: |
+          PKG=$(ls vrtmrz-livesync-commonlib-*.tgz | head -n 1)
+          echo "Using patched package: $PKG"
+          npm install --no-save "./$PKG"
+
+      - name: Build Self-hosted LiveSync
+        run: npm run build
+
+      - name: Verify plugin files
+        run: |
+          test -f main.js
+          test -f manifest.json
+          if [ -f styles.css ]; then echo "styles.css present"; else echo "styles.css not present; continuing"; fi
+
+      - name: Assemble test plugin
+        run: |
+          mkdir -p artifact
+          cp main.js manifest.json artifact/
+          if [ -f styles.css ]; then cp styles.css artifact/; fi
+          printf '%s\n' \
+            'Experimental Android Fast Fetch build.' \
+            'Commonlib branch: Tideus/livesync-commonlib@fix/android-fast-fetch-normal-feed' \
+            'Fast Fetch uses finite CouchDB feed=normal pages instead of ReadableStream feed=continuous.' \
+            > artifact/TEST-BUILD.txt
+
+      - name: Upload plugin artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: obsidian-livesync-android-fast-fetch-test
+          path: artifact/
+          if-no-files-found: error
